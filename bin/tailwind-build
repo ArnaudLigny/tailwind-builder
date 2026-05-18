@@ -1,0 +1,33 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Aligny\TailwindBuilder\Command\TailwindBuildCommand;
+use Composer\InstalledVersions;
+use Symfony\Component\Console\Application;
+
+require dirname(__DIR__) . '/vendor/autoload.php';
+
+$packageVersion = resolvePackageVersion();
+
+$application = new Application('Tailwind Builder', $packageVersion);
+$application->add(new TailwindBuildCommand());
+$application->setDefaultCommand('tailwind:build', true);
+
+exit($application->run());
+
+function resolvePackageVersion(): string
+{
+    try {
+        $rootPackage = InstalledVersions::getRootPackage();
+        $prettyVersion = $rootPackage['pretty_version'] ?? null;
+
+        if (is_string($prettyVersion) && '' !== $prettyVersion) {
+            return $prettyVersion;
+        }
+    } catch (Throwable) {
+    }
+
+    return 'unknown';
+}
