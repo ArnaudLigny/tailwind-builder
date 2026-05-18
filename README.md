@@ -1,5 +1,3 @@
-# Tailwind Builder
-
 A Composer package that compiles CSS using the Tailwind standalone binary matching the current OS.
 
 ## Installation
