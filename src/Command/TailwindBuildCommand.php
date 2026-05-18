@@ -33,7 +33,7 @@ final class TailwindBuildCommand extends Command
             ->setName('tailwind:build')
             ->setDescription('Build Tailwind CSS using the standalone CLI binary.')
             ->addArgument('input', InputArgument::OPTIONAL, 'Input CSS file path', 'assets/tailwind.css')
-            ->addOption('output', 'o', InputOption::VALUE_REQUIRED, 'Output CSS file path')
+            ->addOption('output', 'o', InputOption::VALUE_REQUIRED, 'Output CSS file path (default: <path>/styles.css)')
             ->addOption('watch', 'w', InputOption::VALUE_NONE, 'Watch for file changes')
             ->addOption('minify', 'm', InputOption::VALUE_NONE, 'Minify output CSS')
             ->addOption('config', 'c', InputOption::VALUE_REQUIRED, 'Tailwind config path', 'tailwind.config.js')
