@@ -3,6 +3,4 @@ baseline: "Compiles CSS using the Tailwind standalone binary"
 description: "A Composer package that compiles CSS using the Tailwind standalone binary matching the current OS."
 pages:
   dir: .
-assets:
-  dir: .
 image: og-image.png
