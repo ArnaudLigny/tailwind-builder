@@ -9,23 +9,30 @@ composer require aligny/tailwind-builder
 ## Usage
 
 ```bash
-vendor/bin/tailwind-build
+vendor/bin/tailwind-builder
 ```
 
 Example with options:
 
 ```bash
-vendor/bin/tailwind-build assets/tailwind.css \
+vendor/bin/tailwind-builder assets/tailwind.css \
   --output=public/styles.css \
   --minify \
   --tailwind-version=v4.3.0
 ```
 
-You can also use the Composer script alias:
+### Install globally
+
+To install the command globally, you can use:
 
 ```bash
-composer tailwind:build -- assets/tailwind.css --output=public/styles.css --minify
+composer global require aligny/tailwind-builder
+composer global config bin-dir --absolute
 ```
+
+Backward compatibility:
+
+- `vendor/bin/tailwind-build` remains available as an alias to `vendor/bin/tailwind-builder`.
 
 ## Options
 

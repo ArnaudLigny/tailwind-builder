@@ -31,10 +31,11 @@
         }
     },
     "bin": [
+        "bin/tailwind-builder",
         "bin/tailwind-build"
     ],
     "scripts": {
-        "tailwind:build": "tailwind-build",
+        "tailwind:build": "tailwind-builder",
         "test": "phpunit"
     }
 }

@@ -82,7 +82,7 @@ final class TailwindBuildCommandIntegrationTest extends TestCase
     {
         $process = new Process([
             PHP_BINARY,
-            $this->projectRoot . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'tailwind-build',
+            $this->projectRoot . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'tailwind-builder',
             '--version',
         ], $this->tmpDir);
         $process->run();
@@ -100,7 +100,7 @@ final class TailwindBuildCommandIntegrationTest extends TestCase
         $binaryPath = $this->createMockTailwindBinary();
         $process = new Process([
             PHP_BINARY,
-            $this->projectRoot . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'tailwind-build',
+            $this->projectRoot . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'tailwind-builder',
             'assets/tailwind.css',
             '--bin-path=' . $binaryPath,
             '--output=assets/styles.css',
@@ -111,6 +111,20 @@ final class TailwindBuildCommandIntegrationTest extends TestCase
 
         self::assertSame(0, $process->getExitCode(), $process->getErrorOutput() . $process->getOutput());
         self::assertFileExists($this->tmpDir . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'styles.css');
+    }
+
+    public function testLegacyTailwindBuildAliasStillWorks(): void
+    {
+        $process = new Process([
+            PHP_BINARY,
+            $this->projectRoot . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'tailwind-build',
+            '--version',
+        ], $this->tmpDir);
+        $process->run();
+
+        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput() . $process->getOutput());
+        $output = preg_replace('/\x1b\[[0-9;]*m/', '', $process->getOutput());
+        self::assertStringContainsString('Tailwind Builder', trim((string) $output));
     }
 
     private function createMockTailwindBinary(): string

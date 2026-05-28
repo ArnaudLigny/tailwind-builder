@@ -1,0 +1,53 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * This file is part of Tailwind Builder.
+ *
+ * (c) Arnaud Ligny <arnaud@ligny.fr>
+ *
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
+ */
+
+declare(strict_types=1);
+
+use Aligny\TailwindBuilder\Command\TailwindBuildCommand;
+use Composer\InstalledVersions;
+use Symfony\Component\Console\Application;
+
+if (file_exists(dirname(__DIR__) . '/vendor/autoload.php')) {
+    $loader = require_once dirname(__DIR__) . '/vendor/autoload.php';
+} elseif (file_exists(dirname(__DIR__) . '/../../autoload.php')) {
+    $loader = require_once dirname(__DIR__) . '/../../autoload.php';
+} else {
+    trigger_error("autoload.php not found", E_USER_WARNING);
+}
+
+if (isset($loader) && $loader !== true) {
+    spl_autoload_unregister([$loader, 'loadClass']);
+    $loader->register(false);
+}
+
+$packageVersion = resolvePackageVersion();
+
+$application = new Application('Tailwind Builder', $packageVersion);
+$application->add(new TailwindBuildCommand());
+$application->setDefaultCommand('tailwind:build', true);
+
+exit($application->run());
+
+function resolvePackageVersion(): string
+{
+    try {
+        $rootPackage = InstalledVersions::getRootPackage();
+        $prettyVersion = $rootPackage['pretty_version'] ?? null;
+
+        if (is_string($prettyVersion) && '' !== $prettyVersion) {
+            return $prettyVersion;
+        }
+    } catch (Throwable) {
+    }
+
+    return 'unknown';
+}
