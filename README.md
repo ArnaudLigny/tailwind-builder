@@ -21,6 +21,8 @@ vendor/bin/tailwind-builder assets/tailwind.css \
   --tailwind-version=v4.3.0
 ```
 
+> `vendor/bin/tailwind-build` remains available as an alias to `vendor/bin/tailwind-builder`.
+
 ### Install globally
 
 To install the command globally, you can use:
@@ -29,10 +31,6 @@ To install the command globally, you can use:
 composer global require aligny/tailwind-builder
 composer global config bin-dir --absolute
 ```
-
-Backward compatibility:
-
-- `vendor/bin/tailwind-build` remains available as an alias to `vendor/bin/tailwind-builder`.
 
 ## Options
 
