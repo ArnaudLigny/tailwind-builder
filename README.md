@@ -23,7 +23,7 @@ vendor/bin/tailwind-builder assets/tailwind.css \
 
 > `vendor/bin/tailwind-build` remains available as an alias to `vendor/bin/tailwind-builder`.
 
-### Install globally
+## Install globally
 
 To install the command globally, you can use:
 
