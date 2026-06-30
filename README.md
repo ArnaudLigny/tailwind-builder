@@ -37,7 +37,7 @@ composer global config bin-dir --absolute
 - `--watch|-w`: watch mode
 - `--minify|-m`: minification
 - `--config|-c`: Tailwind config path (mainly for v3)
-- `--tailwind-version`: Tailwind version (default `v4.3.0`)
+- `--tailwind-version`: Tailwind version (default `latest`, resolved from Tailwind GitHub Releases API)
 - `--platform`: platform override (`auto`, `linux-x64`, `linux-arm64`, `macos-x64`, `macos-arm64`, `windows-x64`, etc.)
 - `--bin-path`: explicit path to a local binary (skips download)
 - `--checksum`: expected binary SHA-256 (hex or `sha256:` prefix)

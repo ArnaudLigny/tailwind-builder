@@ -44,8 +44,14 @@ final class BuildOptions
             }
         }
 
-        $tailwindVersion = (string) ($input->getOption('tailwind-version') ?? 'v4.3.0');
-        $tailwindVersion = 'v' . ltrim($tailwindVersion, "vV \t\n\r\0\x0B");
+        $tailwindVersionInput = $input->getOption('tailwind-version');
+        if (!is_string($tailwindVersionInput) || '' === trim($tailwindVersionInput)) {
+            $tailwindVersion = 'latest';
+        } elseif (0 === strcasecmp(trim($tailwindVersionInput), 'latest')) {
+            $tailwindVersion = 'latest';
+        } else {
+            $tailwindVersion = 'v' . ltrim($tailwindVersionInput, "vV \t\n\r\0\x0B");
+        }
 
         $config = $input->getOption('config');
         if (!is_string($config) || '' === trim($config)) {

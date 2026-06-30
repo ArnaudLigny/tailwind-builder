@@ -37,7 +37,7 @@ final class TailwindBuildCommand extends Command
             ->addOption('watch', 'w', InputOption::VALUE_NONE, 'Watch for file changes')
             ->addOption('minify', 'm', InputOption::VALUE_NONE, 'Minify output CSS')
             ->addOption('config', 'c', InputOption::VALUE_REQUIRED, 'Tailwind config path', 'tailwind.config.js')
-            ->addOption('tailwind-version', null, InputOption::VALUE_REQUIRED, 'Tailwind version to use', 'v4.3.0')
+            ->addOption('tailwind-version', null, InputOption::VALUE_REQUIRED, 'Tailwind version to use', 'latest')
             ->addOption('platform', null, InputOption::VALUE_REQUIRED, 'Tailwind platform override', 'auto')
             ->addOption('bin-path', null, InputOption::VALUE_REQUIRED, 'Custom Tailwind binary path (skip auto-download)')
             ->addOption('checksum', null, InputOption::VALUE_REQUIRED, 'Expected SHA-256 checksum for the binary')
@@ -65,15 +65,16 @@ final class TailwindBuildCommand extends Command
         try {
             $cacheDir = getcwd() . DIRECTORY_SEPARATOR . '.cache' . DIRECTORY_SEPARATOR . 'tailwind';
             $binaryResolver = new TailwindBinary($cacheDir, new PlatformDetector(), $output);
+            $resolvedVersion = $binaryResolver->resolveVersion($options->tailwindVersion);
             $binaryPath = $binaryResolver->resolvePath(
                 $options->binPath,
-                $options->tailwindVersion,
+                $resolvedVersion,
                 $options->platform,
                 $options->checksum,
                 $options->verifyChecksum,
             );
 
-            $arguments = $this->buildTailwindArguments($options, $output);
+            $arguments = $this->buildTailwindArguments($options, $output, $resolvedVersion);
             $process = new Process(array_merge([$binaryPath], $arguments), getcwd());
 
             if ($options->watch) {
@@ -107,10 +108,10 @@ final class TailwindBuildCommand extends Command
     /**
      * @return array<int, string>
      */
-    private function buildTailwindArguments(BuildOptions $options, OutputInterface $output): array
+    private function buildTailwindArguments(BuildOptions $options, OutputInterface $output, string $resolvedVersion): array
     {
         $arguments = ['-i', $options->input, '-o', $options->output];
-        $rawVersion = ltrim($options->tailwindVersion, 'v');
+        $rawVersion = ltrim($resolvedVersion, 'v');
 
         if (version_compare($rawVersion, '4.0.0', '<')) {
             if (null !== $options->config && is_file($options->config)) {

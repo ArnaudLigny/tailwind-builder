@@ -19,11 +19,24 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 final class TailwindBinary
 {
+    private const TAILWIND_RELEASES_LATEST_API_URL = 'https://api.github.com/repos/tailwindlabs/tailwindcss/releases/latest';
+
     public function __construct(
         private readonly string $cacheDir,
         private readonly PlatformDetector $platformDetector,
         private readonly OutputInterface $output,
     ) {
+    }
+
+    public function resolveVersion(string $version): string
+    {
+        $normalizedInput = trim($version);
+
+        if ('' === $normalizedInput || 0 === strcasecmp($normalizedInput, 'latest')) {
+            return $this->fetchLatestVersionTag();
+        }
+
+        return 'v' . ltrim($normalizedInput, "vV \t\n\r\0\x0B");
     }
 
     public function resolvePath(
@@ -46,7 +59,7 @@ final class TailwindBinary
             return $customBinaryPath;
         }
 
-        $normalizedVersion = 'v' . ltrim($version, "vV \t\n\r\0\x0B");
+        $normalizedVersion = $this->resolveVersion($version);
         $rawVersion = ltrim($normalizedVersion, 'v');
         $binaryName = $this->platformDetector->getBinaryName($rawVersion, $configuredPlatform);
         $targetDirectory = $this->cacheDir . DIRECTORY_SEPARATOR . $normalizedVersion;
@@ -281,6 +294,34 @@ final class TailwindBinary
         }
 
         return self::extractChecksumFromReleasePayload($payload, $binaryName);
+    }
+
+    private function fetchLatestVersionTag(): string
+    {
+        try {
+            $payload = $this->downloadContent(self::TAILWIND_RELEASES_LATEST_API_URL, ['Accept: application/vnd.github+json']);
+        } catch (\Throwable $exception) {
+            throw new RuntimeException(
+                sprintf(
+                    'Unable to resolve latest Tailwind version from %s. %s. Use --tailwind-version=<version> to force a specific version.',
+                    self::TAILWIND_RELEASES_LATEST_API_URL,
+                    $exception->getMessage()
+                ),
+                previous: $exception
+            );
+        }
+
+        $decoded = json_decode($payload, true);
+        if (!is_array($decoded) || !isset($decoded['tag_name']) || !is_string($decoded['tag_name']) || '' === trim($decoded['tag_name'])) {
+            throw new RuntimeException(
+                sprintf(
+                    'Unable to resolve latest Tailwind version from %s: missing tag_name in response.',
+                    self::TAILWIND_RELEASES_LATEST_API_URL
+                )
+            );
+        }
+
+        return 'v' . ltrim($decoded['tag_name'], "vV \t\n\r\0\x0B");
     }
 
     private function normalizeChecksum(string $checksum): ?string
