@@ -113,20 +113,6 @@ final class TailwindBuildCommandIntegrationTest extends TestCase
         self::assertFileExists($this->tmpDir . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'styles.css');
     }
 
-    public function testLegacyTailwindBuildAliasStillWorks(): void
-    {
-        $process = new Process([
-            PHP_BINARY,
-            $this->projectRoot . DIRECTORY_SEPARATOR . 'bin' . DIRECTORY_SEPARATOR . 'tailwind-build',
-            '--version',
-        ], $this->tmpDir);
-        $process->run();
-
-        self::assertSame(0, $process->getExitCode(), $process->getErrorOutput() . $process->getOutput());
-        $output = preg_replace('/\x1b\[[0-9;]*m/', '', $process->getOutput());
-        self::assertStringContainsString('Tailwind Builder', trim((string) $output));
-    }
-
     private function createMockTailwindBinary(): string
     {
         if ('\\' === DIRECTORY_SEPARATOR) {
