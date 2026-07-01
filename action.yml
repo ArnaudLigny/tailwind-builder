@@ -1,0 +1,127 @@
+name: Tailwind Builder
+description: Build Tailwind CSS in GitHub Actions using the package CLI.
+branding:
+  icon: layers
+  color: blue
+
+inputs:
+  input:
+    description: Source CSS file path.
+    required: false
+    default: assets/tailwind.css
+  output:
+    description: Output CSS file path.
+    required: false
+    default: ''
+  watch:
+    description: Watch for file changes.
+    required: false
+    default: 'false'
+  minify:
+    description: Minify output CSS.
+    required: false
+    default: 'false'
+  config:
+    description: Tailwind config file path.
+    required: false
+    default: tailwind.config.js
+  tailwind-version:
+    description: Tailwind version to use.
+    required: false
+    default: latest
+  platform:
+    description: Tailwind platform override.
+    required: false
+    default: auto
+  bin-path:
+    description: Explicit path to a local Tailwind binary.
+    required: false
+    default: ''
+  checksum:
+    description: Expected SHA-256 checksum for the binary.
+    required: false
+    default: ''
+  insecure-skip-checksum-verification:
+    description: Skip checksum verification.
+    required: false
+    default: 'false'
+  php-version:
+    description: PHP version used to run the action.
+    required: false
+    default: '8.2'
+  working-directory:
+    description: Working directory for the Tailwind command.
+    required: false
+    default: '.'
+
+runs:
+  using: composite
+  steps:
+    - name: Set up PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ inputs.php-version }}
+        coverage: none
+        tools: composer
+
+    - name: Install action dependencies
+      shell: bash
+      working-directory: ${{ github.action_path }}
+      run: composer install --no-interaction --no-progress --prefer-dist
+
+    - name: Run Tailwind build
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        TAILWIND_INPUT: ${{ inputs.input }}
+        TAILWIND_OUTPUT: ${{ inputs.output }}
+        TAILWIND_WATCH: ${{ inputs.watch }}
+        TAILWIND_MINIFY: ${{ inputs.minify }}
+        TAILWIND_CONFIG: ${{ inputs.config }}
+        TAILWIND_VERSION: ${{ inputs.tailwind-version }}
+        TAILWIND_PLATFORM: ${{ inputs.platform }}
+        TAILWIND_BIN_PATH: ${{ inputs.bin-path }}
+        TAILWIND_CHECKSUM: ${{ inputs.checksum }}
+        TAILWIND_SKIP_CHECKSUM: ${{ inputs.insecure-skip-checksum-verification }}
+      run: |
+        set -euo pipefail
+
+        command=(php "${{ github.action_path }}/bin/tailwind-builder" "$TAILWIND_INPUT")
+
+        if [ -n "$TAILWIND_OUTPUT" ]; then
+          command+=("--output=$TAILWIND_OUTPUT")
+        fi
+
+        if [ "$TAILWIND_WATCH" = "true" ]; then
+          command+=("--watch")
+        fi
+
+        if [ "$TAILWIND_MINIFY" = "true" ]; then
+          command+=("--minify")
+        fi
+
+        if [ -n "$TAILWIND_CONFIG" ]; then
+          command+=("--config=$TAILWIND_CONFIG")
+        fi
+
+        if [ -n "$TAILWIND_VERSION" ]; then
+          command+=("--tailwind-version=$TAILWIND_VERSION")
+        fi
+
+        if [ -n "$TAILWIND_PLATFORM" ]; then
+          command+=("--platform=$TAILWIND_PLATFORM")
+        fi
+
+        if [ -n "$TAILWIND_BIN_PATH" ]; then
+          command+=("--bin-path=$TAILWIND_BIN_PATH")
+        fi
+
+        if [ -n "$TAILWIND_CHECKSUM" ]; then
+          command+=("--checksum=$TAILWIND_CHECKSUM")
+        fi
+
+        if [ "$TAILWIND_SKIP_CHECKSUM" = "true" ]; then
+          command+=("--insecure-skip-checksum-verification")
+        fi
+
+        "${command[@]}"
