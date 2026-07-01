@@ -1,9 +1,15 @@
-name: Tests
+name: Run tests
 
 on:
   push:
     branches: [main]
+    paths:
+      - 'bin/**'
+      - 'src/**'
+      - 'composer.json'
+      - 'composer.lock'
   pull_request:
+  workflow_dispatch:
 
 jobs:
   phpunit:

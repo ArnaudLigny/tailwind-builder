@@ -1,9 +1,8 @@
 name: Test Action
 
 on:
-  pull_request:
   push:
-    branches: [main, master]
+    branches: [main]
     paths:
       - 'action.yml'
       - 'bin/**'
@@ -11,6 +10,7 @@ on:
       - 'composer.json'
       - 'composer.lock'
       - '.github/workflows/test-action.yml'
+  pull_request:
   workflow_dispatch:
 
 jobs:
