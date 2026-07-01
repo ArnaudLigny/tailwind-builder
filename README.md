@@ -64,6 +64,3 @@ You can use this repository as a composite action from another workflow:
     minify: true
     tailwind-version: latest
 ```
-
-> The repository also includes a local workflow to test the action with a mock binary: [.github/workflows/test-action.yml](.github/workflows/test-action.yml).
-> For a more realistic example that downloads the official Tailwind binary, see [.github/workflows/example-action.yml](.github/workflows/example-action.yml).
