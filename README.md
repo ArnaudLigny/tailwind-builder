@@ -49,3 +49,21 @@ composer global config bin-dir --absolute
 - By default, the package verifies the binary SHA-256 using the digest exposed by the GitHub Releases API; if metadata is unavailable, the command fails to avoid running an unverified binary.
 - You can explicitly provide a hash with `--checksum` (useful in restricted/offline environments).
 - During concurrent execution, a lock file prevents simultaneous downloads.
+
+## GitHub Action
+
+You can use this repository as a composite action from another workflow:
+
+```yaml
+- name: Build Tailwind CSS
+  uses: ArnaudLigny/tailwind-builder@main
+  with:
+    working-directory: .
+    input: assets/tailwind.css
+    output: public/styles.css
+    minify: true
+    tailwind-version: latest
+```
+
+> The repository also includes a local workflow to test the action with a mock binary: [.github/workflows/test-action.yml](.github/workflows/test-action.yml).
+> For a more realistic example that downloads the official Tailwind binary, see [.github/workflows/example-action.yml](.github/workflows/example-action.yml).

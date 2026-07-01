@@ -1,0 +1,34 @@
+name: Example Tailwind Action
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare sample input
+        run: |
+          mkdir -p demo/assets
+          cat <<'EOF' > demo/assets/tailwind.css
+          @import "tailwindcss";
+          body { color: red; }
+          EOF
+
+      - name: Run the Tailwind action
+        uses: ./
+        with:
+          working-directory: demo
+          input: assets/tailwind.css
+          output: assets/styles.css
+          minify: true
+          tailwind-version: v4.3.0
+          platform: auto
+
+      - name: Show generated file
+        run: |
+          test -f demo/assets/styles.css
+          sed -n '1,20p' demo/assets/styles.css

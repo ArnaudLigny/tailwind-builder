@@ -1,0 +1,81 @@
+name: Test Action
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'action.yml'
+      - 'bin/**'
+      - 'src/**'
+      - 'composer.json'
+      - 'composer.lock'
+      - '.github/workflows/test-action.yml'
+
+jobs:
+  composite-action:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Prepare sample input
+        run: |
+          mkdir -p demo/assets
+          cat <<'EOF' > demo/assets/tailwind.css
+          @import "tailwindcss";
+          body { color: red; }
+          EOF
+
+      - name: Create mock Tailwind binary
+        run: |
+          cat <<'EOF' > demo/mock-tailwind.sh
+          #!/usr/bin/env sh
+          input=""
+          output=""
+
+          while [ "$#" -gt 0 ]; do
+            case "$1" in
+              -i)
+                input="$2"
+                shift 2
+                ;;
+              -o)
+                output="$2"
+                shift 2
+                ;;
+              -c|--config|--tailwind-version|--platform|--checksum)
+                shift 2
+                ;;
+              --watch|--minify|--insecure-skip-checksum-verification)
+                shift
+                ;;
+              *)
+                shift
+                ;;
+            esac
+          done
+
+          if [ -z "$output" ]; then
+            exit 3
+          fi
+
+          printf '/* mock tailwind output */\n' > "$output"
+          if [ -n "$input" ] && [ -f "$input" ]; then
+            cat "$input" >> "$output"
+          fi
+          EOF
+          chmod +x demo/mock-tailwind.sh
+
+      - name: Run the local action
+        uses: ./
+        with:
+          working-directory: demo
+          input: assets/tailwind.css
+          output: assets/styles.css
+          minify: true
+          bin-path: ${{ github.workspace }}/demo/mock-tailwind.sh
+
+      - name: Verify output
+        run: |
+          test -f demo/assets/styles.css
+          grep -q 'mock tailwind output' demo/assets/styles.css
