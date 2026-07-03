@@ -1,4 +1,4 @@
-A Composer package that compiles CSS using the Tailwind standalone binary matching the current OS.
+A Composer package that compiles CSS using the [Tailwind](https://tailwindcss.com) standalone binary matching the current OS.
 
 ## Installation
 
