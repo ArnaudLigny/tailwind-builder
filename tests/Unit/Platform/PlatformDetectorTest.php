@@ -29,4 +29,19 @@ final class PlatformDetectorTest extends TestCase
 
         self::assertSame('tailwindcss-linux-x64', $detector->getBinaryName('3.4.17', 'linux-x64'));
     }
+
+    public function testDetectsMacosArm64OnDarwin(): void
+    {
+        $detector = new PlatformDetector('Darwin', 'arm64');
+
+        self::assertSame('macos-arm64', $detector->detect('4.0.7'));
+        self::assertSame('tailwindcss-macos-arm64', $detector->getBinaryName('4.0.7'));
+    }
+
+    public function testDetectsMacosX64OnDarwin(): void
+    {
+        $detector = new PlatformDetector('Darwin', 'x86_64');
+
+        self::assertSame('macos-x64', $detector->detect('4.0.7'));
+    }
 }

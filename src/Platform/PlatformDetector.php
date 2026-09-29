@@ -31,6 +31,16 @@ final class PlatformDetector
         'windows-x64',
     ];
 
+    private readonly string $osFamily;
+
+    private readonly string $machine;
+
+    public function __construct(?string $osFamily = null, ?string $machine = null)
+    {
+        $this->osFamily = $osFamily ?? PHP_OS_FAMILY;
+        $this->machine = strtolower($machine ?? php_uname('m'));
+    }
+
     public function detect(string $rawVersion, string $configuredPlatform = 'auto'): string
     {
         if ('auto' !== $configuredPlatform) {
@@ -41,17 +51,14 @@ final class PlatformDetector
             return $configuredPlatform;
         }
 
-        $os = strtolower(PHP_OS);
-        $machine = strtolower(php_uname('m'));
-
-        $system = match (true) {
-            str_contains($os, 'win') => 'windows',
-            str_contains($os, 'darwin') => 'macos',
-            str_contains($os, 'linux') => 'linux',
-            default => null,
+        $system = match ($this->osFamily) {
+            'Windows' => 'windows',
+            'Darwin'  => 'macos',
+            'Linux'   => 'linux',
+            default   => null,
         };
 
-        $arch = match ($machine) {
+        $arch = match ($this->machine) {
             'arm64', 'aarch64' => 'arm64',
             'armv7', 'armv7l' => 'armv7',
             'x86_64', 'amd64' => 'x64',
@@ -59,7 +66,7 @@ final class PlatformDetector
         };
 
         if (null === $system || null === $arch) {
-            throw new RuntimeException(sprintf('Unable to detect platform from OS=%s arch=%s.', $os, $machine));
+            throw new RuntimeException(sprintf('Unable to detect platform from OS=%s arch=%s.', $this->osFamily, $this->machine));
         }
 
         if ('windows' === $system && 'x64' !== $arch) {
