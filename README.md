@@ -28,7 +28,7 @@ vendor/bin/tailwind-builder tailwind.css \
 - `--watch|-w`: watch mode
 - `--minify|-m`: minification
 - `--config|-c`: Tailwind config path (mainly for v3)
-- `--tailwind-version`: Tailwind version (default `latest`, resolved from Tailwind GitHub Releases API)
+- `--tailwind-version`: Tailwind version (default `latest`, resolved from Tailwind GitHub Releases API and cached for 24 hours)
 - `--platform`: platform override (`auto`, `linux-x64`, `linux-arm64`, `macos-x64`, `macos-arm64`, `windows-x64`, etc.)
 - `--bin-path`: explicit path to a local binary (skips download)
 - `--checksum`: expected binary SHA-256 (hex or `sha256:` prefix)
@@ -62,5 +62,8 @@ You can use this repository as a composite action from another workflow:
 
 - The binary is downloaded from Tailwind GitHub Releases and cached in `.cache/tailwind/<version>/`.
 - By default, the package verifies the binary SHA-256 using the digest exposed by the GitHub Releases API; if metadata is unavailable, the command fails to avoid running an unverified binary.
+- Once verified, the checksum is stored next to the binary (`<binary>.sha256`), so cached builds don't call the GitHub API again.
 - You can explicitly provide a hash with `--checksum` (useful in restricted/offline environments).
+- The `latest` version is cached in `.cache/tailwind/latest-version.json` for 24 hours; if the GitHub API is unreachable, the last known version is used.
+- Unauthenticated GitHub API calls are limited to 60 requests per hour: set `GITHUB_TOKEN` (or `GH_TOKEN`) to raise this limit. The GitHub Action passes `github.token` by default (`github-token` input).
 - During concurrent execution, a lock file prevents simultaneous downloads.

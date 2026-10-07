@@ -53,6 +53,10 @@ inputs:
     description: Working directory for the Tailwind command.
     required: false
     default: '.'
+  github-token:
+    description: Token used to query the GitHub Releases API (raises the rate limit).
+    required: false
+    default: ${{ github.token }}
 
 runs:
   using: composite
@@ -73,6 +77,7 @@ runs:
       shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
+        GITHUB_TOKEN: ${{ inputs.github-token }}
         TAILWIND_INPUT: ${{ inputs.input }}
         TAILWIND_OUTPUT: ${{ inputs.output }}
         TAILWIND_WATCH: ${{ inputs.watch }}
