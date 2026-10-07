@@ -20,6 +20,9 @@ use Symfony\Component\Console\Output\OutputInterface;
 final class TailwindBinary
 {
     private const TAILWIND_RELEASES_LATEST_API_URL = 'https://api.github.com/repos/tailwindlabs/tailwindcss/releases/latest';
+    private const LATEST_VERSION_CACHE_FILE = 'latest-version.json';
+    private const LATEST_VERSION_CACHE_TTL = 86400;
+    private const CHECKSUM_FILE_SUFFIX = '.sha256';
 
     public function __construct(
         private readonly string $cacheDir,
@@ -28,15 +31,20 @@ final class TailwindBinary
     ) {
     }
 
-    public function resolveVersion(string $version): string
+    public static function isLatestAlias(string $version): bool
     {
         $normalizedInput = trim($version);
 
-        if ('' === $normalizedInput || 0 === strcasecmp($normalizedInput, 'latest')) {
-            return $this->fetchLatestVersionTag();
+        return '' === $normalizedInput || 0 === strcasecmp($normalizedInput, 'latest');
+    }
+
+    public function resolveVersion(string $version): string
+    {
+        if (self::isLatestAlias($version)) {
+            return $this->resolveLatestVersion();
         }
 
-        return 'v' . ltrim($normalizedInput, "vV \t\n\r\0\x0B");
+        return 'v' . ltrim(trim($version), "vV \t\n\r\0\x0B");
     }
 
     public function resolvePath(
@@ -250,7 +258,9 @@ final class TailwindBinary
             }
         }
 
-        $checksum = $normalizedExpected ?? $this->fetchReleaseChecksum($version, $binaryName);
+        $checksum = $normalizedExpected
+            ?? $this->readChecksumFile($binaryPath)
+            ?? $this->fetchReleaseChecksum($version, $binaryName);
         if (null === $checksum) {
             throw new RuntimeException(
                 sprintf(
@@ -262,6 +272,38 @@ final class TailwindBinary
         }
 
         $this->assertChecksum($binaryPath, $checksum, sprintf('Tailwind binary %s', $binaryName));
+        $this->writeChecksumFile($binaryPath, $checksum);
+    }
+
+    /**
+     * Reads the checksum stored next to a previously verified binary, so cache hits don't need the GitHub API.
+     */
+    private function readChecksumFile(string $binaryPath): ?string
+    {
+        $checksumPath = $binaryPath . self::CHECKSUM_FILE_SUFFIX;
+        if (!is_file($checksumPath)) {
+            return null;
+        }
+
+        $content = @file_get_contents($checksumPath);
+        if (false === $content) {
+            return null;
+        }
+
+        $checksum = $this->normalizeChecksum($content);
+        if (null !== $checksum) {
+            $this->writeVerbose(sprintf('<info>[tailwind]</info> checksum read from %s', $checksumPath));
+        }
+
+        return $checksum;
+    }
+
+    private function writeChecksumFile(string $binaryPath, string $checksum): void
+    {
+        $checksumPath = $binaryPath . self::CHECKSUM_FILE_SUFFIX;
+        if (false === @file_put_contents($checksumPath, $checksum . PHP_EOL, LOCK_EX)) {
+            $this->writeVerbose(sprintf('<comment>[tailwind]</comment> unable to write checksum file: %s', $checksumPath));
+        }
     }
 
     private function assertChecksum(string $binaryPath, string $expectedChecksum, string $label): void
@@ -286,7 +328,7 @@ final class TailwindBinary
         $releaseApiUrl = sprintf('https://api.github.com/repos/tailwindlabs/tailwindcss/releases/tags/%s', rawurlencode($version));
 
         try {
-            $payload = $this->downloadContent($releaseApiUrl, ['Accept: application/vnd.github+json']);
+            $payload = $this->downloadContent($releaseApiUrl, self::buildGitHubApiHeaders());
         } catch (\Throwable $exception) {
             $this->writeVerbose(sprintf('<comment>[tailwind]</comment> checksum metadata fetch failed: %s', $exception->getMessage()));
 
@@ -296,14 +338,107 @@ final class TailwindBinary
         return self::extractChecksumFromReleasePayload($payload, $binaryName);
     }
 
+    /**
+     * Resolves "latest" from a local cache (refreshed once a day) to avoid hitting the GitHub API on every build.
+     * Falls back to the last known version when the API is unreachable (e.g. rate limited).
+     */
+    private function resolveLatestVersion(): string
+    {
+        $cached = $this->readLatestVersionCache();
+        if (null !== $cached && time() - $cached['checked_at'] < self::LATEST_VERSION_CACHE_TTL) {
+            $this->writeVerbose(sprintf('<info>[tailwind]</info> latest version from cache: %s', $cached['tag']));
+
+            return $cached['tag'];
+        }
+
+        try {
+            $tag = $this->fetchLatestVersionTag();
+        } catch (RuntimeException $exception) {
+            if (null === $cached) {
+                throw $exception;
+            }
+
+            $this->output->writeln(sprintf(
+                '<comment>[tailwind]</comment> unable to check latest Tailwind version, using cached %s.',
+                $cached['tag']
+            ));
+            $this->writeVerbose(sprintf('<comment>[tailwind]</comment> %s', $exception->getMessage()));
+
+            return $cached['tag'];
+        }
+
+        $this->writeLatestVersionCache($tag);
+
+        return $tag;
+    }
+
+    /**
+     * @return array{tag: string, checked_at: int}|null
+     */
+    private function readLatestVersionCache(): ?array
+    {
+        $cachePath = $this->cacheDir . DIRECTORY_SEPARATOR . self::LATEST_VERSION_CACHE_FILE;
+        if (!is_file($cachePath)) {
+            return null;
+        }
+
+        $content = @file_get_contents($cachePath);
+        $decoded = false === $content ? null : json_decode($content, true);
+        if (
+            !is_array($decoded)
+            || !isset($decoded['tag'], $decoded['checked_at'])
+            || !is_string($decoded['tag'])
+            || !is_int($decoded['checked_at'])
+            || preg_match('/^v\d+\.\d+\.\d+/', $decoded['tag']) !== 1
+        ) {
+            return null;
+        }
+
+        return ['tag' => $decoded['tag'], 'checked_at' => $decoded['checked_at']];
+    }
+
+    private function writeLatestVersionCache(string $tag): void
+    {
+        if (!is_dir($this->cacheDir) && !@mkdir($this->cacheDir, 0777, true) && !is_dir($this->cacheDir)) {
+            return;
+        }
+
+        $cachePath = $this->cacheDir . DIRECTORY_SEPARATOR . self::LATEST_VERSION_CACHE_FILE;
+        $payload = json_encode(['tag' => $tag, 'checked_at' => time()]);
+        if (false === $payload || false === @file_put_contents($cachePath, $payload, LOCK_EX)) {
+            $this->writeVerbose(sprintf('<comment>[tailwind]</comment> unable to write latest version cache: %s', $cachePath));
+        }
+    }
+
+    /**
+     * Builds GitHub API request headers, authenticated with GITHUB_TOKEN (or GH_TOKEN) when available
+     * to raise the rate limit from 60 to 5,000 requests per hour.
+     *
+     * @return array<int, string>
+     */
+    public static function buildGitHubApiHeaders(): array
+    {
+        $headers = ['Accept: application/vnd.github+json'];
+
+        foreach (['GITHUB_TOKEN', 'GH_TOKEN'] as $variable) {
+            $token = getenv($variable);
+            if (is_string($token) && '' !== trim($token)) {
+                $headers[] = 'Authorization: Bearer ' . trim($token);
+                break;
+            }
+        }
+
+        return $headers;
+    }
+
     private function fetchLatestVersionTag(): string
     {
         try {
-            $payload = $this->downloadContent(self::TAILWIND_RELEASES_LATEST_API_URL, ['Accept: application/vnd.github+json']);
+            $payload = $this->downloadContent(self::TAILWIND_RELEASES_LATEST_API_URL, self::buildGitHubApiHeaders());
         } catch (\Throwable $exception) {
             throw new RuntimeException(
                 sprintf(
-                    'Unable to resolve latest Tailwind version from %s. %s. Use --tailwind-version=<version> to force a specific version.',
+                    'Unable to resolve latest Tailwind version from %s. %s. Use --tailwind-version=<version> to force a specific version, or set GITHUB_TOKEN to raise the GitHub API rate limit.',
                     self::TAILWIND_RELEASES_LATEST_API_URL,
                     $exception->getMessage()
                 ),

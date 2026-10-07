@@ -65,10 +65,14 @@ final class TailwindBuildCommand extends Command
         try {
             $cacheDir = getcwd() . DIRECTORY_SEPARATOR . '.cache' . DIRECTORY_SEPARATOR . 'tailwind';
             $binaryResolver = new TailwindBinary($cacheDir, new PlatformDetector(), $output);
-            $resolvedVersion = $binaryResolver->resolveVersion($options->tailwindVersion);
+            // With a custom binary, "latest" can't be known without the GitHub API: skip it and assume v4+
+            $hasCustomBinary = null !== $options->binPath && '' !== trim($options->binPath);
+            $resolvedVersion = $hasCustomBinary && TailwindBinary::isLatestAlias($options->tailwindVersion)
+                ? null
+                : $binaryResolver->resolveVersion($options->tailwindVersion);
             $binaryPath = $binaryResolver->resolvePath(
                 $options->binPath,
-                $resolvedVersion,
+                $resolvedVersion ?? $options->tailwindVersion,
                 $options->platform,
                 $options->checksum,
                 $options->verifyChecksum,
@@ -108,12 +112,11 @@ final class TailwindBuildCommand extends Command
     /**
      * @return array<int, string>
      */
-    private function buildTailwindArguments(BuildOptions $options, OutputInterface $output, string $resolvedVersion): array
+    private function buildTailwindArguments(BuildOptions $options, OutputInterface $output, ?string $resolvedVersion): array
     {
         $arguments = ['-i', $options->input, '-o', $options->output];
-        $rawVersion = ltrim($resolvedVersion, 'v');
 
-        if (version_compare($rawVersion, '4.0.0', '<')) {
+        if (null !== $resolvedVersion && version_compare(ltrim($resolvedVersion, 'v'), '4.0.0', '<')) {
             if (null !== $options->config && is_file($options->config)) {
                 $arguments = ['-c', $options->config, ...$arguments];
             } elseif (null !== $options->config && $output->isVerbose()) {
